@@ -142,32 +142,32 @@ class EngineChannel {
     void update() {
       channel_.update();
       uint16_t value = channel_.value();
-      int16_t vRemoteNorm = value-1500;
+      int16_t vRemoteNorm = value - 1500;
       //Serial.println(vRemoteNorm);
       //vRemoteNorm = vRemoteNorm < 0 ? 0 : vRemoteNorm;
-      
-      
+
+
       if (vRemoteNorm < -20) {
         forwardValue_ = 0;
-        backwardValue_ = -vRemoteNorm/450.0*255;
+        backwardValue_ = -vRemoteNorm / 450.0 * 255;
       }
       else if (vRemoteNorm > 20) {
         backwardValue_ = 0;
-        forwardValue_ = vRemoteNorm/450.0*255 + 40;
+        forwardValue_ = vRemoteNorm / 450.0 * 255 + 40;
       }
       else {
         forwardValue_ = 0;
         backwardValue_ = 0;
       }
-      
+
       //value_ = vRemoteNorm/500.0*255;
       /*
-      Serial.print(value);
-      Serial.print(" ");
-      Serial.print(vRemoteNorm);
-      Serial.print(" ");
-      Serial.print(value_);
-      Serial.println();
+        Serial.print(value);
+        Serial.print(" ");
+        Serial.print(vRemoteNorm);
+        Serial.print(" ");
+        Serial.print(value_);
+        Serial.println();
       */
     }
 
@@ -193,20 +193,45 @@ class EngineChannel {
 
 class Knife {
   public:
-  void enable() {
-    digitalWrite(KNIFE_EN_L_PIN, HIGH);
-    digitalWrite(KNIFE_EN_R_PIN, HIGH);
-  }
+    Knife(uint8_t en_l_pin, uint8_t pwm_l_pin, uint8_t en_r_pin, uint8_t pwm_r_pin) :
+      en_l_pin_(en_l_pin), en_r_pin_(en_r_pin), pwm_l_pin_(pwm_l_pin), pwm_r_pin_(pwm_r_pin) {
 
-  void disable() {
-    digitalWrite(KNIFE_EN_L_PIN, LOW);
-    digitalWrite(KNIFE_EN_R_PIN, LOW);
-    analogWrite(KNIFE_PWM_L_PIN, 0); 
-  }
+    }
 
-  void setVelocity(uint8_t v) {
-    analogWrite(KNIFE_PWM_L_PIN, v); 
-  }
+    void setup() {
+      pinMode(en_l_pin_, OUTPUT);
+      pinMode(pwm_l_pin_, OUTPUT);
+      pinMode(en_r_pin_, OUTPUT);
+      pinMode(pwm_r_pin_, OUTPUT);
+    
+    
+      digitalWrite(en_l_pin_, LOW);
+      digitalWrite(pwm_l_pin_, LOW);
+      digitalWrite(en_r_pin_, LOW);
+      digitalWrite(pwm_r_pin_, LOW);
+    }
+
+    void enable() {
+      digitalWrite(KNIFE_EN_L_PIN, HIGH);
+      digitalWrite(KNIFE_EN_R_PIN, HIGH);
+    }
+
+    void disable() {
+      digitalWrite(KNIFE_EN_L_PIN, LOW);
+      digitalWrite(KNIFE_EN_R_PIN, LOW);
+      analogWrite(KNIFE_PWM_L_PIN, 0);
+    }
+
+    void setVelocity(uint8_t v) {
+      analogWrite(KNIFE_PWM_L_PIN, v);
+    }
+
+  private:
+    uint8_t en_l_pin_;
+    uint8_t en_r_pin_;
+    uint8_t pwm_l_pin_;
+    uint8_t pwm_r_pin_;
+
 };
 
 int pinSwitch1 = A0;
@@ -228,13 +253,11 @@ RemoteThreeStateSwitch cutterOnOffSwitch(CUTTER_SWITCH_PIN, 1900, 2100, 1400, 16
 EngineChannel engineControlLeft(ENGINE_CONTROL_LEFT_PIN);
 EngineChannel engineControlRight(ENGINE_CONTROL_RIGHT_PIN);
 
-Knife knife;
+Knife knife(KNIFE_EN_L_PIN, KNIFE_PWM_L_PIN, KNIFE_EN_R_PIN, KNIFE_PWM_R_PIN);
 
 enum {OFF, ON, CUT};
 uint8_t STATE;
 uint8_t LAST_STATE;
-uint8_t cutterVelocity;
-uint8_t cutterEnable;
 unsigned long ms;
 
 void setup() {
@@ -246,30 +269,18 @@ void setup() {
   pinMode(ENGINE_LEFT_BACKWARD_PIN, OUTPUT);
   pinMode(ENGINE_LEFT_FORWARD_PIN, OUTPUT);
 
-pinMode(KNIFE_EN_L_PIN, OUTPUT);
-pinMode(KNIFE_PWM_L_PIN, OUTPUT);
-pinMode(KNIFE_EN_R_PIN, OUTPUT);
-pinMode(KNIFE_PWM_R_PIN, OUTPUT);
-
-
-digitalWrite(KNIFE_EN_L_PIN, LOW);
-digitalWrite(KNIFE_PWM_L_PIN, LOW);
-digitalWrite(KNIFE_EN_R_PIN, LOW);
-digitalWrite(KNIFE_PWM_R_PIN, LOW);
-
-  cutterEnable = 0;
-  cutterVelocity = 0;
+  knife.setup();
 }
 
 
 void loop() {
-//digitalWrite(2, HIGH);
-//analogWrite(3, 0);
-//digitalWrite(4, HIGH);
-//analogWrite(5, 168);
-  
-//digitalWrite(ENGINE_LEFT_PIN, HIGH);
- // digitalWrite(ENGINE_RIGHT_PIN, LOW); //
+  //digitalWrite(2, HIGH);
+  //analogWrite(3, 0);
+  //digitalWrite(4, HIGH);
+  //analogWrite(5, 168);
+
+  //digitalWrite(ENGINE_LEFT_PIN, HIGH);
+  // digitalWrite(ENGINE_RIGHT_PIN, LOW); //
   ms = millis();               //record the current time
   onOffSwitch.update();
   cutterOnOffSwitch.update();
@@ -280,13 +291,10 @@ void loop() {
       break;
 
     case ON:
-      
-      
       stateOn();
       break;
 
     case CUT:
-       
       stateCut();
       break;
   }
@@ -299,19 +307,15 @@ void loop() {
   Serial.print(" ");
   Serial.print(cutterVelocitySwitch.state());
   Serial.print(" ");
-  Serial.print(cutterEnable);
-  Serial.print(" ");
-  Serial.print(cutterVelocity);
-  Serial.print(" ");
-Serial.print(engineControlLeft.backwardValue());
+  Serial.print(engineControlLeft.backwardValue());
   Serial.print(" ");
   Serial.print(engineControlLeft.forwardValue());
   Serial.print(" ");
   Serial.print(engineControlRight.backwardValue());
   Serial.print(" ");
   Serial.print(engineControlRight.forwardValue());
-  
-Serial.println("");
+
+  Serial.println("");
 
   if (LAST_STATE != STATE) {
     Serial.print("Transition to state: ");
@@ -319,24 +323,11 @@ Serial.println("");
   }
 
   LAST_STATE = STATE;
-/*
-  duration = pulseIn(pinSwitch1, HIGH);
-  Serial.println(duration);
-
-  if (duration > 950 && duration < 1050) {
-    led1 = HIGH;
-  }
-  else {
-    led1 = LOW;
-  }
-
-  digitalWrite(led1Pin, led1);
-  */
 }
 
 void stateOff() {
   if (onOffSwitch.isOn()) {
-    STATE=ON;
+    STATE = ON;
     switchOn();
   }
 }
@@ -358,19 +349,19 @@ void stateOn() {
 
 void stateCut() {
   if (cutterOnOffSwitch.isOff()) {
-    STATE=ON;
+    STATE = ON;
     switchOffCut();
     return;
   }
   if (onOffSwitch.isOff()) {
-    STATE=OFF;
+    STATE = OFF;
     switchOffCut();
     switchOff();
     return;
   }
 
   cut();
-      drive();
+  drive();
 }
 
 void switchOff() {
@@ -378,16 +369,13 @@ void switchOff() {
 }
 
 void switchOn() {
-  
 }
 
 void switchOnCut() {
-  cutterEnable = 1;
+  knife.enable();
 }
 
 void switchOffCut() {
-  cutterVelocity = 0;
-  cutterEnable = 0;
   knife.disable();
 }
 
@@ -402,10 +390,8 @@ int readCutterVelocity() {
   return 128;
 }
 
-void cut() {
-  knife.enable();
-  cutterVelocity = readCutterVelocity();
-  knife.setVelocity(cutterVelocity);
+void cut() {  
+  knife.setVelocity(readCutterVelocity());
 }
 
 void drive() {
