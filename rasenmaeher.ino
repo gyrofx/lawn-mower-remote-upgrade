@@ -3,8 +3,13 @@
 #define ON_OFF_SWITCH_PIN A3
 #define CUTTER_SWITCH_PIN A5
 #define CUTTER_VELOCITY_PIN A4
-#define ENGINE_CONTROL_LEFT_PIN A1
-#define ENGINE_CONTROL_RIGHT_PIN A2
+#define RC_TURN_PIN A0
+#define RC_LEFT_FW_PIN A1
+#define RC_RIGHT_FW_PIN A2
+
+//#define ENGINE_CONTROL_WHEEL_PIN A2
+//#define REMOTE_CONTROL_MODE_SWITCH_PIN 
+
 #define ENGINE_RIGHT_BACKWARD_PIN 10
 #define ENGINE_RIGHT_FORWARD_PIN 9
 #define ENGINE_LEFT_BACKWARD_PIN 11
@@ -14,6 +19,9 @@
 #define KNIFE_PWM_L_PIN 3
 #define KNIFE_EN_R_PIN 4
 #define KNIFE_PWM_R_PIN 5
+
+#define LED_ON_PIN 6
+#define LED_PAUSE_PIN 7
 
 class TreeStateSwitch {
     bool read();
@@ -131,10 +139,10 @@ class RemoteThreeStateSwitch : public RemoteSwitch {
     uint16_t idleMax_;
 };
 
-class EngineChannel {
+class RCChannel {
   public :
 
-    EngineChannel(uint8_t pin): channel_(pin) {
+    RCChannel(uint8_t pin): channel_(pin) {
       forwardValue_ = 0;
       backwardValue_ = 0;
     }
@@ -250,8 +258,9 @@ RemoteThreeStateSwitch cutterVelocitySwitch(CUTTER_VELOCITY_PIN, 1900, 2100, 140
 RemoteSwitch onOffSwitch(ON_OFF_SWITCH_PIN, 1200, 2100, 950, 1050);
 RemoteThreeStateSwitch cutterOnOffSwitch(CUTTER_SWITCH_PIN, 1900, 2100, 1400, 1600, 950, 1050);
 
-EngineChannel engineControlLeft(ENGINE_CONTROL_LEFT_PIN);
-EngineChannel engineControlRight(ENGINE_CONTROL_RIGHT_PIN);
+RCChannel rcLeftStraightChannel(RC_LEFT_FW_PIN);
+//RCChannel rcRightStraight(RC_RIGHT_FW_PIN);
+RCChannel rcRightTurnChannel(RC_TURN_PIN);
 
 Knife knife(KNIFE_EN_L_PIN, KNIFE_PWM_L_PIN, KNIFE_EN_R_PIN, KNIFE_PWM_R_PIN);
 
@@ -268,19 +277,17 @@ void setup() {
   pinMode(ENGINE_RIGHT_FORWARD_PIN, OUTPUT);
   pinMode(ENGINE_LEFT_BACKWARD_PIN, OUTPUT);
   pinMode(ENGINE_LEFT_FORWARD_PIN, OUTPUT);
+  pinMode(LED_ON_PIN, OUTPUT);
+  pinMode(LED_PAUSE_PIN, OUTPUT);
+
+  digitalWrite(LED_ON_PIN, HIGH);
+  digitalWrite(LED_PAUSE_PIN, HIGH);
 
   knife.setup();
 }
 
 
 void loop() {
-  //digitalWrite(2, HIGH);
-  //analogWrite(3, 0);
-  //digitalWrite(4, HIGH);
-  //analogWrite(5, 168);
-
-  //digitalWrite(ENGINE_LEFT_PIN, HIGH);
-  // digitalWrite(ENGINE_RIGHT_PIN, LOW); //
   ms = millis();               //record the current time
   onOffSwitch.update();
   cutterOnOffSwitch.update();
@@ -307,13 +314,13 @@ void loop() {
   Serial.print(" ");
   Serial.print(cutterVelocitySwitch.state());
   Serial.print(" ");
-  Serial.print(engineControlLeft.backwardValue());
+  Serial.print(rcLeftStraightChannel.backwardValue());
   Serial.print(" ");
-  Serial.print(engineControlLeft.forwardValue());
+  Serial.print(rcLeftStraightChannel.forwardValue());
   Serial.print(" ");
-  Serial.print(engineControlRight.backwardValue());
+  Serial.print(rcRightTurnChannel.backwardValue());
   Serial.print(" ");
-  Serial.print(engineControlRight.forwardValue());
+  Serial.print(rcRightTurnChannel.forwardValue());
 
   Serial.println("");
 
@@ -330,6 +337,8 @@ void stateOff() {
     STATE = ON;
     switchOn();
   }
+
+  digitalWrite(LED_PAUSE_PIN, HIGH);
 }
 
 void stateOn() {
@@ -343,7 +352,8 @@ void stateOn() {
     switchOff();
     return;
   }
-
+  
+  digitalWrite(LED_PAUSE_PIN, HIGH);
   drive();
 }
 
@@ -362,6 +372,7 @@ void stateCut() {
 
   cut();
   drive();
+  digitalWrite(LED_PAUSE_PIN, LOW);
 }
 
 void switchOff() {
@@ -394,17 +405,86 @@ void cut() {
   knife.setVelocity(readCutterVelocity());
 }
 
+uint8_t to8Bit(int16_t value) {
+  if (value > 255) {
+    return 255;
+  }
+  if (value < 0) {
+    return 0;
+  }
+  return value;
+}
+
 void drive() {
-  engineControlLeft.update();
-  engineControlRight.update();
+  rcLeftStraightChannel.update();
+  rcRightTurnChannel.update();
 
-  //analogWrite(ENGINE_LEFT_PIN, engineControlLeft.value());
-  //digitalWrite(ENGINE_LEFT_PIN, 0);
-  analogWrite(ENGINE_RIGHT_BACKWARD_PIN, engineControlRight.backwardValue());
-  analogWrite(ENGINE_RIGHT_FORWARD_PIN, engineControlRight.forwardValue());
+  uint8_t turnLeft = rcRightTurnChannel.backwardValue();
+  uint8_t turnRight = rcRightTurnChannel.forwardValue();
+  uint8_t turnLeftValue = 0;
+  uint8_t turnRightValue = 0;
+  if (turnLeft > 0) {
+    turnLeftValue = turnLeft;
+  }
+  else if (turnRight > 0) {
+    turnRightValue = turnRight;
+  }
+  
+  uint8_t fw = rcLeftStraightChannel.forwardValue();
+  uint8_t bw = rcLeftStraightChannel.backwardValue();
 
-  analogWrite(ENGINE_LEFT_BACKWARD_PIN, engineControlLeft.backwardValue());
-  analogWrite(ENGINE_LEFT_FORWARD_PIN, engineControlLeft.forwardValue());
+  int16_t bwRight = bw;
+  int16_t bwLeft = bw;
+  int16_t fwRight = fw;
+  int16_t fwLeft = fw;
+
+  if (fw > 0) {
+    if (turnLeftValue > 0) {
+      fwLeft -= turnLeftValue;
+    }
+    else if (turnRightValue > 0) {
+      fwRight -= turnRightValue;
+    }
+  }
+  else if (bw > 0) {
+    if (turnLeftValue > 0) {
+      bwLeft -= turnLeftValue;
+    }
+    else if (turnRightValue > 0) {
+      bwRight -= turnRightValue;
+    }
+  }
+  else if (fw == 0 && bw == 0) {
+    if (turnLeftValue > 0) {
+      fwLeft = bwRight = turnLeftValue / 2;
+    }
+    else if (turnRightValue > 0) {
+      fwRight = bwLeft = turnRightValue / 2;
+    }
+  }
+
+  
+
+  uint8_t bwRight_8 = to8Bit(bwRight);
+  uint8_t fwRight_8 = to8Bit(fwRight);
+  uint8_t bwLeft_8 = to8Bit(bwLeft);
+  uint8_t fwLeft_8 = to8Bit(fwLeft);
+
+  analogWrite(ENGINE_RIGHT_BACKWARD_PIN, bwRight_8);
+  analogWrite(ENGINE_RIGHT_FORWARD_PIN, fwRight_8);
+
+  analogWrite(ENGINE_LEFT_BACKWARD_PIN, bwLeft_8);
+  analogWrite(ENGINE_LEFT_FORWARD_PIN, fwLeft_8);
+
+  Serial.print(" ");
+  Serial.print(bwRight_8);
+  Serial.print(" ");
+  Serial.print(fwRight_8);
+  Serial.print(" ");
+  Serial.print(bwLeft_8);
+  Serial.print(" ");
+  Serial.print(fwLeft_8);
+  Serial.print(" | ");
 }
 
 
