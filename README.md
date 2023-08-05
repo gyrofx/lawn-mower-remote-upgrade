@@ -1,4 +1,4 @@
-# Lawn Mover Remote Control UpgraA0
+# Lawn Mover Remote Control Upgrade
 
 This repository contains the code for the remote control upgrade of a Wiper Blitz lawn mover.
 
