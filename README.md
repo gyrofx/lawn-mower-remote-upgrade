@@ -2,11 +2,14 @@
 
 This repository contains the code for the remote control upgrade of a Wiper Blitz lawn mover.
 
+⚠️ If someone really rebuild this, please be careful. The lawn mower is a dangerous machine. It is not a toy. It can cause serious injuries. Especially if you work on the electronics or debug the program and turn on the blade unintentional. I recommend removing the blade when working on the lawn mower. Also, the lawn mower does not contain a position sensor. The blade can run when the lawn mower is on its back. I take no responsibility for any damage or injury caused by the use of this instructions and code. ⚠️ 
+
+
 ## Background
 
 A long time ago we bought a Wiper Blitz lawn mower. This is an automatic lawn mower that works without cables that you have to lay. Instead, it has sensors that detect the lawn edges and obstacles. Sounds good, but it didn't work very well, at least in our garden. Our lawn is connected to the neighbour's lawn and so of course the sensors are not able to detect the border. So the lawnmower drives over the lawn edges and cuts the neighbour's lawn. That's not very nice. I have to admit that we should have known that before we bought it. But we didn't. So we had to find a solution.
 
-Instead of supervising the lawnmower when it runs or building obstacles like a fence, I decided to upgrade the lawnmower so that it can be controlled remotely. 
+Instead of supervising the lawnmower when it runs or building obstacles like a fence, I decided to upgrade the lawnmower so that it can be controlled remotely.
 
 ## Technical Overview
 
@@ -66,22 +69,32 @@ https://www.carson-modelsport.com/carson_de/ersatzteile-zubehoer/rc-zubehoer/fer
 
 ### Connection between receiver and arduino
 
-| Arduino | Receiver |
-| ------- | -------- |
-| A0      | CH1      |
-| A1      | CH2      |
-| A2      | CH3      |
-| A3      | CH5      |
-| A4      | CH6      |
-| A5      | CH10     |
+| Arduino | Receiver | Function                              |
+| ------- | -------- | ------------------------------------- |
+| A0      | CH1      | Drive left/right, right joystick      |
+| A1      | CH2      | unused                                |
+| A2      | CH3      | Drive forward/backward, left joystick |
+| A3      | CH5      | Enable Drive                          |
+| A4      | CH6      | Velocity blade                        |
+| A5      | CH10     | Enable blade                          |
 
 ### Connection between arduino and motor driver boards (balde)
 
 | Arduino | Driver |
-| ------- | -------- |
-| 2       | L_PWM     |
-| 3       | L_EN     |
-| 4       | R_PWN    |
-| 5       | R_EN     |
+| ------- | ------ |
+| 2       | L_PWM  |
+| 3       | L_EN   |
+| 4       | R_PWN  |
+| 5       | R_EN   |
 
 ![Motor driver for blade motor](resources/7960-connections.jpg)
+
+## Usage
+
+![Radio control usage](resources/radio-control-usage.png)
+
+- Enable drive: CH5
+- Enable blade: CH10
+- Velocity blade: CH6
+- Drive forward/backward: left joystick
+- Drive left/right: right joystick
