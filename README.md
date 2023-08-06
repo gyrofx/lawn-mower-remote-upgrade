@@ -87,6 +87,18 @@ https://www.carson-modelsport.com/carson_de/ersatzteile-zubehoer/rc-zubehoer/fer
 | 4       | R_PWN  |
 | 5       | R_EN   |
 
+### Connection between arduino and motor driver boards (wheels)
+
+| Arduino | Driver Right |
+| ------- | ------ |
+| 9       | IN_1  |
+| 10       | IN_2   |
+
+| Arduino | Driver Left |
+| ------- | ------ |
+| 11      | IN_1  |
+| 13       | IN_2   |
+
 ![Motor driver for blade motor](resources/7960-connections.jpg)
 
 ## Usage
